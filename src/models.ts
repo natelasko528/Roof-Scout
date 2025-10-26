@@ -20,6 +20,9 @@ export interface Lead {
   lat?: number;
   lng?: number;
   imageUrl?: string;
+  userImageUrls?: string[];
+  roofScore: number | null;
+  roofScoreReasoning?: string;
 }
 
 export interface Session {

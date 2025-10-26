@@ -22,13 +22,19 @@
       <div class="space-y-3">
         @for (lead of filteredLeads(); track lead.id) {
           <div (click)="onViewLead(lead)" class="bg-white dark:bg-slate-800 rounded-lg p-4 shadow-md cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors duration-200 border border-slate-200 dark:border-transparent">
-            <div class="flex justify-between items-start">
-              <div>
+            <div class="flex justify-between items-start gap-4">
+              <div class="flex-grow">
                 <p class="font-bold text-lg text-slate-800 dark:text-slate-100">{{ lead.address }}</p>
                 <p class="text-sm text-slate-500 dark:text-slate-400">{{ lead.homeownerName || 'No name provided' }}</p>
               </div>
-              <div class="text-xs font-semibold px-2 py-1 rounded-full text-white" [class]="getStatusColor(lead.status)">
-                {{ lead.status }}
+              <div class="flex flex-col items-end gap-2 flex-shrink-0">
+                <div class="text-xs font-semibold px-2 py-1 rounded-full text-white" [class]="getStatusColor(lead.status)">
+                  {{ lead.status }}
+                </div>
+                <div class="text-sm font-bold px-2.5 py-1 rounded-full flex items-center gap-1" [class]="getScoreColor(lead.roofScore)">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5.121l4.157-2.4a1 1 0 011.342 1.342L14.586 10l2.913 4.937a1 1 0 01-1.342 1.342L12 13.879V19a1 1 0 01-1.447.894l-8-4A1 1 0 012 15V6a1 1 0 01.553-.894l8-4a1 1 0 01.747-.05z" clip-rule="evenodd" /></svg>
+                  <span>{{ lead.roofScore ?? 'N/A' }}</span>
+                </div>
               </div>
             </div>
           </div>

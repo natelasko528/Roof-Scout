@@ -85,7 +85,7 @@ export class DataService {
     }
   }
 
-  addLead(lead: Omit<Lead, 'id' | 'createdAt'>) {
+  addLead(lead: Omit<Lead, 'id' | 'createdAt'>): Lead {
     const newLead: Lead = {
       ...lead,
       id: self.crypto.randomUUID(),
@@ -96,6 +96,7 @@ export class DataService {
         s.id === this.activeSessionId() ? { ...s, leads: [...s.leads, newLead] } : s
       )
     );
+    return newLead;
   }
 
   updateLead(updatedLead: Lead) {

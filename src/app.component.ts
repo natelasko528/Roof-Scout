@@ -51,6 +51,9 @@ export class AppComponent implements OnInit {
 
   aiIsLoading = signal<boolean>(false);
   aiResult = signal<{ title: string; content: string; sources?: any[] } | null>(null);
+  
+  isRecalculatingScore = signal(false);
+  userImageUrls = signal<string[]>([]);
 
   statuses = LEAD_STATUSES;
   priorities = PRIORITIES;
@@ -87,6 +90,7 @@ export class AppComponent implements OnInit {
   openNewLeadForm() {
     this.isNewLead.set(true);
     this.selectedLead.set(null);
+    this.userImageUrls.set([]);
     this.leadForm.reset({
       visibleDamage: false,
       priority: 'Medium',
@@ -98,6 +102,7 @@ export class AppComponent implements OnInit {
   openNewLeadFromMap(address: string) {
     this.isNewLead.set(true);
     this.selectedLead.set(null);
+    this.userImageUrls.set([]);
     this.leadForm.reset({
       address: address,
       visibleDamage: false,
@@ -110,6 +115,7 @@ export class AppComponent implements OnInit {
   openLeadDetails(lead: Lead) {
     this.isNewLead.set(false);
     this.selectedLead.set(lead);
+    this.userImageUrls.set(lead.userImageUrls || []);
     this.leadForm.patchValue(lead);
     this.modalType.set('lead-detail');
   }
@@ -130,17 +136,20 @@ export class AppComponent implements OnInit {
     }
     
     const leadData = this.leadForm.value;
+    const leadPayload = { ...leadData, userImageUrls: this.userImageUrls() };
 
     if (this.isNewLead()) {
         try {
-            const imageUrl = await this.getSatelliteImageForAddress(leadData.address);
-            this.dataService.addLead({ ...leadData, imageUrl });
+            const imageUrl = await this.getSatelliteImageForAddress(leadPayload.address);
+            const newLead = this.dataService.addLead({ ...leadPayload, imageUrl, roofScore: null });
+            this.recalculateScore(newLead); // Trigger initial score calculation
         } catch (error) {
             console.error("Could not fetch satellite image, saving lead without it.", error);
-            this.dataService.addLead(leadData); // Save lead even if image fails
+            const newLead = this.dataService.addLead({ ...leadPayload, roofScore: null }); // Save lead even if image fails
+            this.recalculateScore(newLead);
         }
     } else {
-      const updatedLead = { ...this.selectedLead()!, ...leadData };
+      const updatedLead = { ...this.selectedLead()!, ...leadPayload };
       this.dataService.updateLead(updatedLead);
     }
     this.closeModal();
@@ -210,5 +219,81 @@ export class AppComponent implements OnInit {
     const lead = this.selectedLead();
     if (!lead || !lead.notes) return;
     this.runAiAction('Notes Summary', this.geminiService.summarizeNotes(lead.notes));
+  }
+
+  async recalculateScore(leadToScore: Lead | null) {
+    if (!leadToScore) return;
+    this.isRecalculatingScore.set(true);
+    try {
+      // Create a temporary lead object with the latest form data for analysis
+      const currentData = { ...leadToScore, ...this.leadForm.value, userImageUrls: this.userImageUrls() };
+      const result = await this.geminiService.calculateRoofScore(currentData);
+      if (result) {
+        const updatedLead = { ...currentData, roofScore: result.score, roofScoreReasoning: result.reasoning };
+        this.dataService.updateLead(updatedLead);
+        this.selectedLead.set(updatedLead);
+        this.leadForm.patchValue(updatedLead); // Ensure form reflects the new score info
+      }
+    } catch (error) {
+      console.error("Failed to recalculate score:", error);
+      // Optionally show an error to the user
+    } finally {
+      this.isRecalculatingScore.set(false);
+    }
+  }
+
+  async onFileSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (!input.files) return;
+
+    const files = Array.from(input.files);
+    const resizedImagePromises = files.map(file => this.resizeImage(file));
+    
+    try {
+        const base64Images = await Promise.all(resizedImagePromises);
+        this.userImageUrls.update(current => [...current, ...base64Images]);
+    } catch (error) {
+        console.error("Error resizing images:", error);
+    }
+  }
+
+  removeUserImage(indexToRemove: number) {
+    this.userImageUrls.update(current => current.filter((_, index) => index !== indexToRemove));
+  }
+
+  private async resizeImage(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e: any) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const MAX_DIMENSION = 1024;
+                let { width, height } = img;
+
+                if (width > height) {
+                    if (width > MAX_DIMENSION) {
+                        height = Math.round(height * (MAX_DIMENSION / width));
+                        width = MAX_DIMENSION;
+                    }
+                } else {
+                    if (height > MAX_DIMENSION) {
+                        width = Math.round(width * (MAX_DIMENSION / height));
+                        height = MAX_DIMENSION;
+                    }
+                }
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                if (!ctx) return reject('Could not get canvas context');
+                ctx.drawImage(img, 0, 0, width, height);
+                resolve(canvas.toDataURL('image/jpeg', 0.85)); // Use JPEG for smaller file size
+            };
+            img.onerror = reject;
+            img.src = e.target.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
   }
 }

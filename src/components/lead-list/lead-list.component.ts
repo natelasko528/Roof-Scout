@@ -30,7 +30,7 @@ export class LeadListComponent {
       const searchMatch = lead.address.toLowerCase().includes(currentSearch) || 
                           lead.homeownerName.toLowerCase().includes(currentSearch);
       return statusMatch && searchMatch;
-    });
+    }).sort((a, b) => (b.roofScore ?? -1) - (a.roofScore ?? -1)); // Sort by score descending
   });
 
   getStatusColor(status: LeadStatus): string {
@@ -45,6 +45,14 @@ export class LeadListComponent {
       'Completed': 'bg-emerald-600',
     };
     return colors[status];
+  }
+  
+  getScoreColor(score: number | null): string {
+    if (score === null || score === undefined) return 'bg-slate-400 text-slate-800';
+    if (score >= 80) return 'bg-red-600 text-white';
+    if (score >= 60) return 'bg-orange-500 text-white';
+    if (score >= 40) return 'bg-yellow-500 text-slate-800';
+    return 'bg-green-600 text-white';
   }
 
   onFilterChange(event: Event) {
