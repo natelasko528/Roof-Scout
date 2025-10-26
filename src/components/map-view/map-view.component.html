@@ -1,0 +1,24 @@
+<div class="h-full w-full flex flex-col animate-fade-in">
+  <!-- Dashboard Stats -->
+  <div class="p-4">
+    <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-4">Dashboard</h1>
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      @for (stat of stats(); track stat.label) {
+        <div class="p-4 rounded-lg shadow-lg" [class]="stat.color">
+          <p class="text-sm text-white/80">{{ stat.label }}</p>
+          <p class="text-3xl font-bold text-white">{{ stat.value }}</p>
+        </div>
+      }
+    </div>
+  </div>
+
+  <!-- Map View -->
+  <div class="flex-grow p-4 pt-0">
+    <div class="h-full w-full rounded-lg overflow-hidden shadow-lg border border-slate-200 dark:border-slate-700">
+      <app-interactive-map 
+        [leads]="leads()" 
+        (markerClick)="onViewLead($event)"
+        (newLeadAtAddress)="onNewLead($event)" />
+    </div>
+  </div>
+</div>

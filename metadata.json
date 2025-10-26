@@ -1,0 +1,8 @@
+{
+  "name": "Roof Scout Canvassing App",
+  "description": "A mobile-first door knocking canvassing app for roofing sales professionals. Track leads, manage territories, and leverage AI to close more deals.",
+  "requestFramePermissions": [
+    "geolocation",
+    "microphone"
+  ]
+}

@@ -1,0 +1,47 @@
+<div class="p-4 animate-fade-in flex flex-col h-full">
+  <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-4">Leads</h1>
+  
+  <div class="flex flex-col sm:flex-row gap-2 mb-4">
+    <input 
+      type="text" 
+      placeholder="Search by address or name..." 
+      class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-md px-3 py-2 text-slate-900 dark:text-slate-200 focus:ring-2 focus:ring-sky-500 focus:outline-none"
+      (input)="onSearch($event)">
+      
+    <select 
+      class="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-md px-3 py-2 text-slate-900 dark:text-slate-200 focus:ring-2 focus:ring-sky-500 focus:outline-none"
+      (change)="onFilterChange($event)">
+      @for (status of statuses; track status) {
+        <option [value]="status">{{ status }}</option>
+      }
+    </select>
+  </div>
+
+  <div class="flex-grow overflow-y-auto pb-20">
+    @if (filteredLeads().length > 0) {
+      <div class="space-y-3">
+        @for (lead of filteredLeads(); track lead.id) {
+          <div (click)="onViewLead(lead)" class="bg-white dark:bg-slate-800 rounded-lg p-4 shadow-md cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors duration-200 border border-slate-200 dark:border-transparent">
+            <div class="flex justify-between items-start">
+              <div>
+                <p class="font-bold text-lg text-slate-800 dark:text-slate-100">{{ lead.address }}</p>
+                <p class="text-sm text-slate-500 dark:text-slate-400">{{ lead.homeownerName || 'No name provided' }}</p>
+              </div>
+              <div class="text-xs font-semibold px-2 py-1 rounded-full text-white" [class]="getStatusColor(lead.status)">
+                {{ lead.status }}
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+    } @else {
+      <div class="text-center py-16">
+        <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-12 w-12 text-slate-400 dark:text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+        </svg>
+        <p class="mt-4 text-slate-500 dark:text-slate-400">No leads found.</p>
+        <p class="text-sm text-slate-400 dark:text-slate-500">Add a new lead to get started.</p>
+      </div>
+    }
+  </div>
+</div>
