@@ -77,14 +77,15 @@
   <!-- Input Form -->
   <footer class="flex-shrink-0 p-4 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
     <form (ngSubmit)="sendMessage()" class="flex gap-2">
-      <input 
+      <input
         type="text"
-        [(ngModel)]="userInput"
+        [value]="userInput()"
+        (input)="userInput.set($any($event.target).value)"
         name="userInput"
         placeholder="Ask AI Scout..."
         class="w-full bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-full px-4 py-2 text-slate-900 dark:text-slate-200 focus:ring-2 focus:ring-sky-500 focus:outline-none transition-shadow"
         [disabled]="isLoading() || isLiveConversation()">
-      
+
       <div class="flex items-center">
         @if (isMicrophoneAvailable()) {
           <button
@@ -105,8 +106,8 @@
         }
       </div>
 
-      <button 
-        type="submit" 
+      <button
+        type="submit"
         class="bg-sky-600 text-white rounded-full p-2.5 shadow-md hover:bg-sky-700 disabled:bg-slate-500 transition-all"
         [disabled]="isLoading() || !userInput() || isLiveConversation()">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -116,12 +117,3 @@
     </form>
   </footer>
 </aside>
-<style>
-  @keyframes sound-bar {
-    0%, 100% { height: 0.5rem; }
-    50% { height: 1.25rem; }
-  }
-  .animate-sound-bar {
-    animation: sound-bar 1.2s infinite ease-in-out;
-  }
-</style>

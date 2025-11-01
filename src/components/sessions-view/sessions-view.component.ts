@@ -1,6 +1,7 @@
 import { Component, ChangeDetectionStrategy, inject } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { DataService } from '../../services/data.service';
+import { ReportService } from '../../services/report.service';
 import { Session } from '../../models';
 
 @Component({
@@ -11,6 +12,7 @@ import { Session } from '../../models';
 })
 export class SessionsViewComponent {
   private dataService = inject(DataService);
+  private reportService = inject(ReportService);
   allSessions = this.dataService.allSessions;
   activeSessionId = this.dataService.activeSessionId;
 
@@ -34,5 +36,36 @@ export class SessionsViewComponent {
   
   exportData() {
     this.dataService.exportLeadsToCSV();
+  }
+
+  async generateSessionPDF(event: MouseEvent, session: Session) {
+    event.stopPropagation(); // Prevent loadSession from firing
+    try {
+      await this.reportService.generateSessionReport(session, {
+        includeLeads: true,
+        includeStatistics: true,
+        includeTerritory: false,
+      });
+    } catch (error) {
+      console.error('Failed to generate session PDF:', error);
+      alert('Failed to generate PDF report. Please try again.');
+    }
+  }
+
+  async generatePerformancePDF() {
+    try {
+      const sessions = this.allSessions();
+      if (sessions.length === 0) {
+        alert('No sessions available to generate a performance report.');
+        return;
+      }
+      await this.reportService.generatePerformanceReport(sessions, {
+        includeTrends: true,
+        includeCharts: false,
+      });
+    } catch (error) {
+      console.error('Failed to generate performance PDF:', error);
+      alert('Failed to generate PDF report. Please try again.');
+    }
   }
 }

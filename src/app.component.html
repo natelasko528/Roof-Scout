@@ -2,10 +2,43 @@
   
   <!-- Main Content Area -->
   <div class="flex flex-col flex-grow h-full transition-all duration-300 ease-in-out" [class.w-full]="!isChatbotOpen()" [class.w-[calc(100%-400px)]]="isChatbotOpen()">
+    <!-- PWA Install Banner -->
+    @if (showInstallBanner()) {
+      <div class="bg-gradient-to-r from-sky-500 to-indigo-600 text-white p-3 flex items-center justify-between shadow-lg">
+        <div class="flex items-center gap-3">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+          </svg>
+          <div>
+            <p class="font-semibold">Install Roof Scout</p>
+            <p class="text-sm opacity-90">Get quick access from your home screen</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button (click)="installPWA()" class="px-4 py-2 bg-white text-sky-600 rounded-md font-semibold hover:bg-slate-100 transition-colors text-sm">
+            Install
+          </button>
+          <button (click)="dismissInstallBanner()" class="p-2 hover:bg-white/20 rounded-full transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    }
+
     <!-- App Header -->
     <header class="flex-shrink-0 flex justify-between items-center p-2 sm:p-4 border-b border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm shadow-sm z-10">
       <h1 class="text-xl font-bold text-sky-600 dark:text-sky-400">Roof Scout</h1>
       <div class="flex items-center gap-4">
+        <!-- PWA Install Button (for devices that don't show banner) -->
+        @if (canInstall()) {
+          <button (click)="installPWA()" class="p-2 rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 focus:ring-offset-slate-100 dark:focus:ring-offset-slate-800 text-sky-500 dark:text-sky-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors" title="Install App">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+          </button>
+        }
         <!-- Theme Toggle -->
         <button (click)="themeService.toggleTheme()" class="p-2 rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 focus:ring-offset-slate-100 dark:focus:ring-offset-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
           @if (themeService.theme() === 'light') {
@@ -123,10 +156,17 @@
             <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-slate-300 dark:border-slate-600 border-dashed rounded-md">
                 <div class="space-y-1 text-center">
                     <svg class="mx-auto h-12 w-12 text-slate-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true"><path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>
-                    <div class="flex text-sm text-slate-600 dark:text-slate-400">
+                    @if (isUploadingImages()) {
+                      <div class="flex items-center justify-center">
+                        <svg class="animate-spin h-5 w-5 text-sky-500 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        <span class="text-sm text-slate-600 dark:text-slate-400">Processing images...</span>
+                      </div>
+                    } @else {
+                      <div class="flex text-sm text-slate-600 dark:text-slate-400">
                         <label for="file-upload" class="relative cursor-pointer bg-white dark:bg-slate-800 rounded-md font-medium text-sky-600 hover:text-sky-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-sky-500"><span class="px-1">Upload files</span><input id="file-upload" name="file-upload" type="file" class="sr-only" multiple accept="image/*" (change)="onFileSelected($event)"></label>
                         <p class="pl-1">or drag and drop</p>
-                    </div>
+                      </div>
+                    }
                 </div>
             </div>
             @if (userImageUrls().length > 0) {
@@ -155,6 +195,19 @@
               </div>
             </div>
           }
+
+          <!-- PDF Report Actions -->
+          @if (!isNewLead() && selectedLead()) {
+            <div class="border-t border-slate-200 dark:border-slate-700 pt-4 space-y-2">
+              <h3 class="text-lg font-semibold text-slate-700 dark:text-slate-300">Reports</h3>
+              <div class="flex flex-wrap gap-2">
+                <button type="button" (click)="generateLeadPDF(selectedLead()!)" class="text-sm font-semibold text-rose-700 dark:text-rose-200 bg-rose-100 dark:bg-rose-900/50 border border-rose-200 dark:border-rose-800/50 px-3 py-1.5 rounded-md hover:bg-rose-200 dark:hover:bg-rose-900 transition-colors">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline-block mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
+                  Download Lead Report (PDF)
+                </button>
+              </div>
+            </div>
+          }
         </form>
         <footer class="flex justify-between items-center p-4 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-200 dark:border-slate-700">
           <div>
@@ -162,7 +215,16 @@
               <button type="button" (click)="deleteLead()" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors text-sm font-semibold">Delete</button>
             }
           </div>
-          <button type="submit" (click)="saveLead()" [disabled]="leadForm.invalid" class="px-6 py-2 bg-sky-600 text-white rounded-md hover:bg-sky-700 disabled:bg-slate-400 disabled:cursor-not-allowed transition-colors font-semibold">Save</button>
+          <button type="submit" (click)="saveLead()" [disabled]="leadForm.invalid || isGeocoding() || isUploadingImages()" class="px-6 py-2 bg-sky-600 text-white rounded-md hover:bg-sky-700 disabled:bg-slate-400 disabled:cursor-not-allowed transition-colors font-semibold">
+            @if (isGeocoding() || isUploadingImages()) {
+              <span class="flex items-center">
+                <svg class="animate-spin h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                Processing...
+              </span>
+            } @else {
+              Save
+            }
+          </button>
         </footer>
       </div>
     }

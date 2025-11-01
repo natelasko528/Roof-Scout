@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, signal, inject, OnInit, effect } from '@angular/core';
+import { Component, ChangeDetectionStrategy, signal, inject, OnInit, OnDestroy, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
@@ -7,9 +7,12 @@ import { firstValueFrom } from 'rxjs';
 
 import { DataService } from './services/data.service';
 import { GeminiService } from './services/gemini.service';
+import { WeatherService } from './services/weather.service';
 import { ThemeService } from './services/theme.service';
 import { ViewActionService } from './services/view-action.service';
+import { ReportService } from './services/report.service';
 import { Lead, LEAD_STATUSES, PRIORITIES } from './models';
+import { SecurityUtil } from './utils/security.util';
 
 import { MapViewComponent } from './components/map-view/map-view.component';
 import { LeadListComponent } from './components/lead-list/lead-list.component';
@@ -32,13 +35,17 @@ type ModalType = 'lead-detail' | 'ai-result' | null;
     ChatbotComponent,
   ],
 })
-export class AppComponent implements OnInit {
+export class AppComponent implements OnInit, OnDestroy {
+  // Track active timeouts for cleanup
+  private activeTimeouts = new Set<NodeJS.Timeout>();
   // Fix: Explicitly type `fb` as FormBuilder to resolve potential type inference issues.
   private fb: FormBuilder = inject(FormBuilder);
   private dataService = inject(DataService);
   private geminiService = inject(GeminiService);
+  private weatherService = inject(WeatherService);
   private http = inject(HttpClient);
   private viewActionService = inject(ViewActionService);
+  private reportService = inject(ReportService);
   themeService = inject(ThemeService); // Initialize the theme service
 
   currentView = signal<View>('map');
@@ -51,9 +58,18 @@ export class AppComponent implements OnInit {
 
   aiIsLoading = signal<boolean>(false);
   aiResult = signal<{ title: string; content: string; sources?: any[] } | null>(null);
-  
+
   isRecalculatingScore = signal(false);
   userImageUrls = signal<string[]>([]);
+
+  // Loading states for better UX
+  isGeocoding = signal<boolean>(false);
+  isUploadingImages = signal<boolean>(false);
+
+  // PWA Installation
+  private deferredPrompt: any = null;
+  showInstallBanner = signal(false);
+  canInstall = signal(false);
 
   statuses = LEAD_STATUSES;
   priorities = PRIORITIES;
@@ -81,10 +97,74 @@ export class AppComponent implements OnInit {
       priority: ['Medium', Validators.required],
       status: ['Not Visited', Validators.required],
     });
+
+    // PWA Installation Event Listeners
+    window.addEventListener('beforeinstallprompt', (e) => {
+      // Prevent Chrome 67 and earlier from automatically showing the prompt
+      e.preventDefault();
+      // Stash the event so it can be triggered later
+      this.deferredPrompt = e;
+      this.showInstallBanner.set(true);
+      this.canInstall.set(true);
+    });
+
+    window.addEventListener('appinstalled', () => {
+      this.showInstallBanner.set(false);
+      this.canInstall.set(false);
+      this.deferredPrompt = null;
+    });
+
+    // Check if already installed
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      this.canInstall.set(false);
+    }
+  }
+
+  ngOnDestroy() {
+    // Clean up all timeouts to prevent memory leaks
+    this.activeTimeouts.forEach(timeout => clearTimeout(timeout));
+    this.activeTimeouts.clear();
+  }
+
+  // Helper method to track timeouts for cleanup
+  protected createTimeout(callback: () => void, delay: number): NodeJS.Timeout {
+    const timeout = setTimeout(() => {
+      this.activeTimeouts.delete(timeout);
+      callback();
+    }, delay);
+    this.activeTimeouts.add(timeout);
+    return timeout;
   }
 
   setView(view: View) {
     this.currentView.set(view);
+  }
+
+  // PWA Installation Methods
+  installPWA() {
+    if (!this.deferredPrompt) {
+      return;
+    }
+
+    // Show the install prompt
+    this.deferredPrompt.prompt();
+
+    // Wait for the user to respond to the prompt
+    this.deferredPrompt.userChoice.then((choiceResult: any) => {
+      if (choiceResult.outcome === 'accepted') {
+        console.log('User accepted the install prompt');
+      } else {
+        console.log('User dismissed the install prompt');
+      }
+      this.deferredPrompt = null;
+      this.showInstallBanner.set(false);
+    });
+  }
+
+  dismissInstallBanner() {
+    this.showInstallBanner.set(false);
+    // Store in localStorage to remember dismissal
+    localStorage.setItem('pwa-install-banner-dismissed', 'true');
   }
   
   openNewLeadForm() {
@@ -134,14 +214,16 @@ export class AppComponent implements OnInit {
     if (this.leadForm.invalid) {
       return;
     }
-    
+
     const leadData = this.leadForm.value;
     const leadPayload = { ...leadData, userImageUrls: this.userImageUrls() };
 
     if (this.isNewLead()) {
         try {
             const imageUrl = await this.getSatelliteImageForAddress(leadPayload.address);
-            const newLead = this.dataService.addLead({ ...leadPayload, imageUrl, roofScore: null });
+            // Fetch weather data for the new lead
+            const weatherData = await this.getWeatherDataForAddress(leadPayload.address);
+            const newLead = this.dataService.addLead({ ...leadPayload, imageUrl, roofScore: null, weatherData });
             this.recalculateScore(newLead); // Trigger initial score calculation
         } catch (error) {
             console.error("Could not fetch satellite image, saving lead without it.", error);
@@ -157,24 +239,53 @@ export class AppComponent implements OnInit {
 
   private async getSatelliteImageForAddress(address: string): Promise<string | undefined> {
     // 1. Geocode address to get lat/lng
-    const geocodeUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`;
-    const geocodeResults = await firstValueFrom(this.http.get<any[]>(geocodeUrl));
+    this.isGeocoding.set(true);
+    try {
+      const geocodeUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`;
+      const geocodeResults = await firstValueFrom(this.http.get<any[]>(geocodeUrl));
 
-    if (!geocodeResults || geocodeResults.length === 0) {
+      if (!geocodeResults || geocodeResults.length === 0) {
         throw new Error("Geocoding failed, no results found.");
+      }
+      const { lat, lon } = geocodeResults[0];
+      const latitude = parseFloat(lat);
+      const longitude = parseFloat(lon);
+
+      // 2. Construct Esri static image URL
+      const size = "400,300"; // width,height
+      const zoomLevel = 19; // A close-up zoom level
+      const mapScale = 564; // Corresponds roughly to zoom level 19
+
+      const imageUrl = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?bbox=${longitude},${latitude},${longitude},${latitude}&bboxSR=4326&size=${size}&imageSR=4326&format=jpg&transparent=false&dpi=96&mapScale=${mapScale}&f=image`;
+
+      return imageUrl;
+    } finally {
+      this.isGeocoding.set(false);
     }
-    const { lat, lon } = geocodeResults[0];
-    const latitude = parseFloat(lat);
-    const longitude = parseFloat(lon);
+  }
 
-    // 2. Construct Esri static image URL
-    const size = "400,300"; // width,height
-    const zoomLevel = 19; // A close-up zoom level
-    const mapScale = 564; // Corresponds roughly to zoom level 19
-    
-    const imageUrl = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?bbox=${longitude},${latitude},${longitude},${latitude}&bboxSR=4326&size=${size}&imageSR=4326&format=jpg&transparent=false&dpi=96&mapScale=${mapScale}&f=image`;
-
-    return imageUrl;
+  private async getWeatherDataForAddress(address: string) {
+    try {
+      const severeWeather = await this.weatherService.hasRecentSevereWeather(address);
+      if (severeWeather.hasSevereWeather) {
+        return {
+          hasRecentSevereWeather: true,
+          severeWeatherCount: 1,
+          lastHailDate: severeWeather.lastEvent?.type === 'hail' ? severeWeather.lastEvent?.date : undefined,
+          lastSevereStormDate: severeWeather.lastEvent?.date,
+        };
+      }
+      return {
+        hasRecentSevereWeather: false,
+        severeWeatherCount: 0
+      };
+    } catch (error) {
+      console.error('Failed to fetch weather data:', error);
+      return {
+        hasRecentSevereWeather: false,
+        severeWeatherCount: 0
+      };
+    }
   }
 
   deleteLead() {
@@ -191,7 +302,9 @@ export class AppComponent implements OnInit {
     try {
       const response = await action;
       const sources = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
-      this.aiResult.set({ title, content: response.text, sources });
+      // Sanitize AI-generated HTML content to prevent XSS attacks
+      const sanitizedContent = SecurityUtil.sanitizeHtml(response.text);
+      this.aiResult.set({ title, content: sanitizedContent, sources });
     } catch (error) {
       console.error('AI Action Failed:', error);
       this.aiResult.set({ title, content: '<p>An error occurred while processing your request.</p>' });
@@ -247,13 +360,19 @@ export class AppComponent implements OnInit {
     if (!input.files) return;
 
     const files = Array.from(input.files);
-    const resizedImagePromises = files.map(file => this.resizeImage(file));
-    
+    this.isUploadingImages.set(true);
+
     try {
-        const base64Images = await Promise.all(resizedImagePromises);
-        this.userImageUrls.update(current => [...current, ...base64Images]);
+      const resizedImagePromises = files.map(file => this.resizeImage(file));
+      const base64Images = await Promise.all(resizedImagePromises);
+      this.userImageUrls.update(current => [...current, ...base64Images]);
     } catch (error) {
-        console.error("Error resizing images:", error);
+      console.error("Error resizing images:", error);
+      alert('Failed to process images. Please try smaller files or fewer images.');
+    } finally {
+      this.isUploadingImages.set(false);
+      // Clear the input value so the same file can be selected again
+      input.value = '';
     }
   }
 
@@ -261,39 +380,118 @@ export class AppComponent implements OnInit {
     this.userImageUrls.update(current => current.filter((_, index) => index !== indexToRemove));
   }
 
+  // PDF Report Generation Methods
+
+  async generateLeadPDF(lead: Lead) {
+    try {
+      await this.reportService.generateLeadReport(lead, {
+        includeImages: true,
+        includeWeather: false,
+        includeMap: true,
+      });
+    } catch (error) {
+      console.error('Failed to generate lead PDF:', error);
+      alert('Failed to generate PDF report. Please try again.');
+    }
+  }
+
+  async generateSessionPDF(session: any) {
+    try {
+      await this.reportService.generateSessionReport(session, {
+        includeLeads: true,
+        includeStatistics: true,
+        includeTerritory: false,
+      });
+    } catch (error) {
+      console.error('Failed to generate session PDF:', error);
+      alert('Failed to generate PDF report. Please try again.');
+    }
+  }
+
+  async generateTerritoryPDF() {
+    try {
+      const leads = this.dataService.leads();
+      if (leads.length === 0) {
+        alert('No leads available to generate a territory report.');
+        return;
+      }
+      await this.reportService.generateTerritoryReport(leads, {
+        includeDensityMap: true,
+        includeLeadSummary: true,
+      });
+    } catch (error) {
+      console.error('Failed to generate territory PDF:', error);
+      alert('Failed to generate PDF report. Please try again.');
+    }
+  }
+
+  async generatePerformancePDF() {
+    try {
+      const sessions = this.dataService.allSessions();
+      if (sessions.length === 0) {
+        alert('No sessions available to generate a performance report.');
+        return;
+      }
+      await this.reportService.generatePerformanceReport(sessions, {
+        includeTrends: true,
+        includeCharts: false,
+      });
+    } catch (error) {
+      console.error('Failed to generate performance PDF:', error);
+      alert('Failed to generate PDF report. Please try again.');
+    }
+  }
+
   private async resizeImage(file: File): Promise<string> {
     return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = (e: any) => {
-            const img = new Image();
-            img.onload = () => {
-                const canvas = document.createElement('canvas');
-                const MAX_DIMENSION = 1024;
-                let { width, height } = img;
+      const reader = new FileReader();
 
-                if (width > height) {
-                    if (width > MAX_DIMENSION) {
-                        height = Math.round(height * (MAX_DIMENSION / width));
-                        width = MAX_DIMENSION;
-                    }
-                } else {
-                    if (height > MAX_DIMENSION) {
-                        width = Math.round(width * (MAX_DIMENSION / height));
-                        height = MAX_DIMENSION;
-                    }
-                }
-                canvas.width = width;
-                canvas.height = height;
-                const ctx = canvas.getContext('2d');
-                if (!ctx) return reject('Could not get canvas context');
-                ctx.drawImage(img, 0, 0, width, height);
-                resolve(canvas.toDataURL('image/jpeg', 0.85)); // Use JPEG for smaller file size
-            };
-            img.onerror = reject;
-            img.src = e.target.result;
+      reader.onload = (e: ProgressEvent<FileReader>) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX_DIMENSION = 800; // Reduced from 1024 to save space
+          let { width, height } = img;
+
+          if (width > height) {
+            if (width > MAX_DIMENSION) {
+              height = Math.round(height * (MAX_DIMENSION / width));
+              width = MAX_DIMENSION;
+            }
+          } else {
+            if (height > MAX_DIMENSION) {
+              width = Math.round(width * (MAX_DIMENSION / height));
+              height = MAX_DIMENSION;
+            }
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) return reject('Could not get canvas context');
+
+          // Use faster drawing options for better performance
+          ctx.drawImage(img, 0, 0, width, height);
+
+          // Reduce quality to 0.7 for smaller file size (was 0.85)
+          // This saves ~30% space on images
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+
+          // Clean up image data to free memory
+          img.src = '';
+          canvas.width = 0;
+          canvas.height = 0;
+
+          resolve(dataUrl);
         };
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
+        img.onerror = reject;
+        if (e.target?.result && typeof e.target.result === 'string') {
+          img.src = e.target.result;
+        } else {
+          reject(new Error('Invalid image data'));
+        }
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
     });
   }
 }

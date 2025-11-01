@@ -1,7 +1,13 @@
 <div class="h-full w-full flex flex-col animate-fade-in">
   <!-- Dashboard Stats -->
   <div class="p-4">
-    <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-4">Dashboard</h1>
+    <div class="flex justify-between items-center mb-4">
+      <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100">Dashboard</h1>
+      <button (click)="generateTerritoryPDF()" class="px-3 py-2 bg-rose-600 text-white rounded-md hover:bg-rose-700 transition-colors text-sm font-semibold flex items-center gap-2">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" /></svg>
+        Territory Report
+      </button>
+    </div>
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
       @for (stat of stats(); track stat.label) {
         <div class="p-4 rounded-lg shadow-lg" [class]="stat.color">

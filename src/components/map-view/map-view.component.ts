@@ -1,6 +1,7 @@
 import { Component, ChangeDetectionStrategy, inject, computed, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DataService } from '../../services/data.service';
+import { ReportService } from '../../services/report.service';
 import { Lead, LeadStatus } from '../../models';
 import { InteractiveMapComponent } from '../interactive-map/interactive-map.component';
 
@@ -17,6 +18,7 @@ export class MapViewComponent {
   newLead = output<string>();
 
   private dataService = inject(DataService);
+  private reportService = inject(ReportService);
   leads = this.dataService.leads;
 
   stats = computed(() => {
@@ -40,5 +42,22 @@ export class MapViewComponent {
 
   onNewLead(address: string) {
     this.newLead.emit(address);
+  }
+
+  async generateTerritoryPDF() {
+    try {
+      const leads = this.leads();
+      if (leads.length === 0) {
+        alert('No leads available to generate a territory report.');
+        return;
+      }
+      await this.reportService.generateTerritoryReport(leads, {
+        includeDensityMap: true,
+        includeLeadSummary: true,
+      });
+    } catch (error) {
+      console.error('Failed to generate territory PDF:', error);
+      alert('Failed to generate PDF report. Please try again.');
+    }
   }
 }

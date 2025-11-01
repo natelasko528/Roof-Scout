@@ -2,6 +2,7 @@ import { Component, ChangeDetectionStrategy, output, inject, signal, viewChild, 
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { GeminiService } from '../../services/gemini.service';
+import { SecurityUtil } from '../../utils/security.util';
 
 interface Message {
   role: 'user' | 'model';
@@ -20,7 +21,9 @@ export class ChatbotComponent implements OnDestroy {
   private geminiService = inject(GeminiService);
   private messagesContainer = viewChild<ElementRef>('messagesContainer');
   
-  messages = signal<Message[]>([{ role: 'model', html: '<p>Hi! I\'m AI Scout. How can I help you today? You can ask me to create a lead or find an address on the map.</p>' }]);
+  messages = signal<Message[]>([
+    { role: 'model', html: '<p>Hi! I\'m <strong>AI Scout</strong> 🤖</p><p>I can help you:</p><ul><li>Create and manage leads</li><li>Find addresses on the map</li><li>Update lead status</li><li>Switch between views</li><li>Delete leads</li></ul><p><em>Try asking: "Create a lead for 123 Main Street" or "Show me my leads"</em></p>' }
+  ]);
   userInput = signal('');
   isLoading = signal(false);
   
@@ -31,7 +34,7 @@ export class ChatbotComponent implements OnDestroy {
   // Mic and Audio processing
   private audioContext: AudioContext | null = null;
   private stream: MediaStream | null = null;
-  private processor: ScriptProcessorNode | null = null;
+  private processor: AudioWorkletNode | ScriptProcessorNode | null = null;
 
   // Audio playback
   private playbackAudioContext: AudioContext | null = null;
@@ -85,11 +88,15 @@ export class ChatbotComponent implements OnDestroy {
 
         if (transcript.isFinal) {
             if (transcript.text.trim()) {
-                this.messages.update(m => [...m, { role: 'user', html: `<p>${transcript.text}</p>` }]);
+                // Sanitize user transcript to prevent XSS
+                const sanitizedText = SecurityUtil.sanitizeText(transcript.text);
+                this.messages.update(m => [...m, { role: 'user', html: `<p>${sanitizedText}</p>` }]);
                 this.scrollToBottom();
             }
             if (this.liveModelTranscript().trim()) {
-                this.messages.update(m => [...m, { role: 'model', html: `<p>${this.liveModelTranscript()}</p>` }]);
+                // Sanitize model transcript to prevent XSS
+                const sanitizedText = SecurityUtil.sanitizeText(this.liveModelTranscript());
+                this.messages.update(m => [...m, { role: 'model', html: `<p>${sanitizedText}</p>` }]);
                 this.scrollToBottom();
             }
             this.liveUserTranscript.set('');
@@ -116,30 +123,42 @@ export class ChatbotComponent implements OnDestroy {
 
   private async startLiveConversation() {
     if (this.isLiveConversation()) return;
-    
+
     this.messages.update(m => [...m, { role: 'model', html: '<p><em>Live conversation started...</em></p>' }]);
     this.liveUserTranscript.set('');
     this.liveModelTranscript.set('');
     this.audioChunkQueue = [];
     this.isLiveConversation.set(true);
     await this.geminiService.connectLiveSession();
-    
+
     try {
         this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         this.audioContext = new AudioContext({ sampleRate: 16000 });
-        const source = this.audioContext.createMediaStreamSource(this.stream);
-        this.processor = this.audioContext.createScriptProcessor(4096, 1, 1);
 
-        this.processor.onaudioprocess = (e) => {
+        // Resume audio context if it's in suspended state
+        if (this.audioContext.state === 'suspended') {
+            console.log('Resuming suspended AudioContext for recording');
+            await this.audioContext.resume();
+        }
+
+        // Load the AudioWorklet processor
+        await this.audioContext.audioWorklet.addModule('/src/components/chatbot/audio-processor.worklet.js');
+
+        const source = this.audioContext.createMediaStreamSource(this.stream);
+        this.processor = new AudioWorkletNode(this.audioContext, 'audio-capture-processor');
+
+        // Listen for audio data from the worklet
+        this.processor.port.onmessage = (event) => {
             if (!this.isLiveConversation()) return;
-            const inputData = e.inputBuffer.getChannelData(0);
-            const pcm16Data = this.float32ToInt16(inputData);
-            const base64 = this.arrayBufferToBase64(pcm16Data);
-            this.geminiService.sendLiveAudio(base64);
+            this.geminiService.sendLiveAudio(event.data);
         };
 
         source.connect(this.processor);
-        this.processor.connect(this.audioContext.destination);
+        // Connect to destination with a gain of 0 to avoid feedback
+        const gain = this.audioContext.createGain();
+        gain.gain.value = 0;
+        this.processor.connect(gain);
+        gain.connect(this.audioContext.destination);
 
     } catch (error) {
         console.error("Microphone access denied or error:", error);
@@ -171,17 +190,36 @@ export class ChatbotComponent implements OnDestroy {
       return;
     }
 
-    this.messages.update(m => [...m, { role: 'user', html: `<p>${messageText}</p>` }]);
+    // Sanitize user input to prevent XSS
+    const sanitizedText = SecurityUtil.sanitizeText(messageText);
+    this.messages.update(m => [...m, { role: 'user', html: `<p>${sanitizedText}</p>` }]);
     this.userInput.set('');
     this.isLoading.set(true);
     this.scrollToBottom();
 
     try {
       const responseHtml = await this.geminiService.sendMessageToChat(messageText);
-      this.messages.update(m => [...m, { role: 'model', html: responseHtml }]);
+      // Sanitize AI response to prevent XSS
+      const sanitizedResponse = SecurityUtil.sanitizeHtml(responseHtml);
+      this.messages.update(m => [...m, { role: 'model', html: sanitizedResponse }]);
     } catch (error) {
       console.error('Chatbot error:', error);
-      const errorMsg = '<p>Sorry, I encountered an error. Please try again.</p>';
+
+      // Provide more specific error messages based on error type
+      let errorMsg = '<p><strong>⚠️ Error</strong></p><p>Sorry, I encountered an error. ';
+
+      if (error instanceof Error) {
+        if (error.message.includes('API Key')) {
+          errorMsg += 'Please check your API key configuration.</p>';
+        } else if (error.message.includes('network') || error.message.includes('fetch')) {
+          errorMsg += 'There was a network error. Please check your connection.</p>';
+        } else {
+          errorMsg += 'Please try again later.</p>';
+        }
+      } else {
+        errorMsg += 'Please try again.</p>';
+      }
+
       this.messages.update(m => [...m, { role: 'model', html: errorMsg }]);
     } finally {
       this.isLoading.set(false);
@@ -200,10 +238,16 @@ export class ChatbotComponent implements OnDestroy {
         this.isSpeaking.set(false);
         return;
     }
-    
+
     try {
       if (!this.playbackAudioContext || this.playbackAudioContext.state === 'closed') {
         this.playbackAudioContext = new AudioContext();
+      }
+
+      // Resume audio context if it's in suspended state
+      if (this.playbackAudioContext.state === 'suspended') {
+        console.log('Resuming suspended AudioContext');
+        await this.playbackAudioContext.resume();
       }
 
       const wavBlob = this.createWavBlob(audioData);
@@ -237,27 +281,8 @@ export class ChatbotComponent implements OnDestroy {
     this.isSpeaking.set(false);
   }
 
-  private float32ToInt16(buffer: Float32Array): ArrayBuffer {
-    let l = buffer.length;
-    const buf = new Int16Array(l);
-    while (l--) {
-        buf[l] = Math.min(1, buffer[l]) * 0x7FFF;
-    }
-    return buf.buffer;
-  }
-  
-  private arrayBufferToBase64(buffer: ArrayBuffer): string {
-    let binary = '';
-    const bytes = new Uint8Array(buffer);
-    const len = bytes.byteLength;
-    for (let i = 0; i < len; i++) {
-        binary += String.fromCharCode(bytes[i]);
-    }
-    return window.btoa(binary);
-  }
-
   private createWavBlob(base64Data: string): Blob {
-    const sampleRate = 24000;
+    const sampleRate = 16000;
     const numChannels = 1;
     const bitsPerSample = 16;
     

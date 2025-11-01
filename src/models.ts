@@ -23,6 +23,14 @@ export interface Lead {
   userImageUrls?: string[];
   roofScore: number | null;
   roofScoreReasoning?: string;
+  // Weather-related fields
+  weatherData?: {
+    lastHailDate?: string;
+    lastSevereStormDate?: string;
+    severeWeatherCount: number;
+    hasRecentSevereWeather: boolean;
+  };
+  weatherInsights?: string;
 }
 
 export interface Session {

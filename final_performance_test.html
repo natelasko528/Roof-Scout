@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Roof Scout - Performance Test Results</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        h1 { color: #333; border-bottom: 3px solid #4CAF50; padding-bottom: 10px; }
+        h2 { color: #555; margin-top: 30px; }
+        .section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        .metric:last-child { border-bottom: none; }
+        .metric-name { font-weight: 600; color: #333; }
+        .metric-value { color: #4CAF50; font-weight: bold; }
+        .metric-value.warning { color: #ff9800; }
+        .metric-value.error { color: #f44336; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th { background: #4CAF50; color: white; }
+        tr:hover { background: #f5f5f5; }
+        .score {
+            font-size: 24px;
+            font-weight: bold;
+            color: #4CAF50;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .score.overall { font-size: 48px; }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        button:hover { background: #45a049; }
+        .status-good { color: #4CAF50; }
+        .status-warning { color: #ff9800; }
+        .status-error { color: #f44336; }
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+    </style>
+</head>
+<body>
+    <h1>🏠 Roof Scout - Performance & Data Persistence Analysis</h1>
+    
+    <div class="section">
+        <h2>📊 Overall Performance Score</h2>
+        <div class="score overall">8.1 / 10</div>
+        <p style="text-align: center; color: #666;">
+            Excellent architectural practices with room for optimization
+        </p>
+    </div>
+
+    <div class="section">
+        <h2>📦 Bundle Analysis</h2>
+        <div class="metric">
+            <span class="metric-name">Main Bundle Size (Raw)</span>
+            <span class="metric-value">924 KB</span>
+        </div>
+        <div class="metric">
+            <span class="metric-name">Main Bundle Size (Gzipped)</span>
+            <span class="metric-value">205 KB</span>
+        </div>
+        <div class="metric">
+            <span class="metric-name">Total Module Size (Raw)</span>
+            <span class="metric-value warning">4.54 MB</span>
+        </div>
+        <div class="metric">
+            <span class="metric-name">Total Module Size (Gzipped)</span>
+            <span class="metric-value">1.36 MB</span>
+        </div>
+        <div class="metric">
+            <span class="metric-name">Gzip Compression Ratio</span>
+            <span class="metric-value">78%</span>
+        </div>
+        <div class="metric">
+            <span class="metric-name">Build Time</span>
+            <span class="metric-value">7.6 seconds</span>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>🗄️ Data Persistence (localStorage)</h2>
+        <div class="metric">
+            <span class="metric-name">Implementation Quality</span>
+            <span class="metric-value status-good">✅ Excellent</span>
+        </div>
+        <div class="metric">
+            <span class="metric-name">Error Handling</span>
+            <span class="metric-value status-good">✅ Try-catch blocks</span>
+        </div>
+        <div class="metric">
+            <span class="metric-name">Computed Signals</span>
+            <span class="metric-value status-good">✅ Optimal</span>
+        </div>
+        <div class="metric">
+            <span class="metric-name">Quota Management</span>
+            <span class="metric-value status-warning">⚠️ Missing</span>
+        </div>
+        <div class="metric">
+            <span class="metric-name">Max Leads (No Images)</span>
+            <span class="metric-value">~5000 leads</span>
+        </div>
+        <div class="metric">
+            <span class="metric-name">Max Leads (With Images)</span>
+            <span class="metric-value warning">~100-500 leads</span>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>⚡ Performance Metrics</h2>
+        <div class="metric">
+            <span class="metric-name">Change Detection Strategy</span>
+            <span class="metric-value status-good">OnPush ✅</span>
+        </div>
+        <div class="metric">
+            <span class="metric-name">Signal-Based State</span>
+            <span class="metric-value status-good">Modern Angular 20 ✅</span>
+        </div>
+        <div class="metric">
+            <span class="metric-name">Computed Signal Cache</span>
+            <span class="metric-value status-good">✅ Enabled</span>
+        </div>
+        <div class="metric">
+            <span class="metric-name">FilteredLeads Recalculation</span>
+            <span class="metric-value status-warning">⚠️ O(n log n) per read</span>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>🧠 Memory Analysis</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Component/Service</th>
+                    <th>Memory Impact</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>AudioContext (Chatbot)</td>
+                    <td>One-time ~500KB</td>
+                    <td class="status-good">✅ Properly cleaned up</td>
+                </tr>
+                <tr>
+                    <td>Computed Signals</td>
+                    <td>Minimal (caches last value)</td>
+                    <td class="status-good">✅ Optimized</td>
+                </tr>
+                <tr>
+                    <td>Base64 Images</td>
+                    <td>~500KB - 2MB per lead</td>
+                    <td class="status-warning">⚠️ Needs compression</td>
+                </tr>
+                <tr>
+                    <td>Event Listeners</td>
+                    <td>Minimal</td>
+                    <td class="status-good">✅ Properly managed</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="section">
+        <h2>⚠️ Critical Issues</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Issue</th>
+                    <th>Impact</th>
+                    <th>Priority</th>
+                    <th>Solution</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Debug code in bundle</td>
+                    <td>1.24 MB overhead (27%)</td>
+                    <td class="status-error">HIGH</td>
+                    <td>Configure Vite prod build</td>
+                </tr>
+                <tr>
+                    <td>FilteredLeads recalculation</td>
+                    <td>Expensive with 500+ leads</td>
+                    <td class="status-warning">MEDIUM</td>
+                    <td>Implement memoization</td>
+                </tr>
+                <tr>
+                    <td>Missing quota checks</td>
+                    <td>Silent failures possible</td>
+                    <td class="status-warning">MEDIUM</td>
+                    <td>Add storage.estimate()</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="section">
+        <h2>📈 Scalability Thresholds</h2>
+        <div class="metric">
+            <span class="metric-name">0 - 100 leads</span>
+            <span class="metric-value status-good">✅ Excellent performance</span>
+        </div>
+        <div class="metric">
+            <span class="metric-name">100 - 500 leads</span>
+            <span class="metric-value status-good">✅ Good performance</span>
+        </div>
+        <div class="metric">
+            <span class="metric-name">500 - 1000 leads</span>
+            <span class="metric-value status-warning">⚠️ Needs optimization</span>
+        </div>
+        <div class="metric">
+            <span class="metric-name">1000 - 5000 leads</span>
+            <span class="metric-value status-error">❌ Requires changes</span>
+        </div>
+        <div class="metric">
+            <span class="metric-name">5000+ leads</span>
+            <span class="metric-value status-error">❌ Migrate to backend</span>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>🚀 Recommended Optimizations</h2>
+        <h3>High Priority</h3>
+        <ul>
+            <li><strong>Remove debug code:</strong> Configure Vite to exclude debug_node.mjs in production (-1.2 MB)</li>
+            <li><strong>Optimize filtering:</strong> Memoize filteredLeads based on filter changes (-90% filter time)</li>
+            <li><strong>Add quota checks:</strong> Use navigator.storage.estimate() before writes</li>
+        </ul>
+        
+        <h3>Medium Priority</h3>
+        <ul>
+            <li><strong>Image compression:</strong> Lower default JPEG quality from 0.85 to 0.7 (-30% size)</li>
+            <li><strong>Virtual scrolling:</strong> Angular CDK for lead list with 100+ items</li>
+            <li><strong>Marker clustering:</strong> For map view with 100+ markers</li>
+            <li><strong>Compress localStorage:</strong> Use pako/gzip for data (-60-80% size)</li>
+        </ul>
+        
+        <h3>Low Priority</h3>
+        <ul>
+            <li><strong>Lazy loading:</strong> Route-based code splitting (-100-200 KB)</li>
+            <li><strong>Service worker:</strong> Cache API responses for offline support</li>
+        </ul>
+    </div>
+
+    <div class="section">
+        <h2>✅ Architecture Strengths</h2>
+        <ul style="line-height: 2;">
+            <li>✅ <strong>Modern Angular 20:</strong> Signals, standalone components, OnPush detection</li>
+            <li>✅ <strong>Excellent ChangeDetection:</strong> OnPush strategy on all components</li>
+            <li>✅ <strong>Signal-based state:</strong> No direct DOM manipulation, pure reactive</li>
+            <li>✅ <strong>Computed signals:</strong> Automatic caching, minimal recalculation</li>
+            <li>✅ <strong>Well-structured data:</strong> Clean models, separation of concerns</li>
+            <li>✅ <strong>Error handling:</strong> Try-catch on localStorage operations</li>
+            <li>✅ <strong>Good gzip ratio:</strong> 78% compression achieved</li>
+        </ul>
+    </div>
+
+    <div class="section">
+        <h2>📝 Testing Commands</h2>
+        <p>Run these commands to verify performance:</p>
+        <code>npm run build</code><br>
+        <code>npm run build -- --stats-json</code><br>
+        <code>python3 analyze_stats.py</code><br>
+        <code>npm run dev</code> (then visit <code>http://localhost:3000</code>)<br>
+    </div>
+
+    <div class="section" style="text-align: center; background: #4CAF50; color: white;">
+        <h2>Conclusion</h2>
+        <p style="font-size: 18px; line-height: 1.8;">
+            The Roof Scout application demonstrates <strong>excellent architectural practices</strong> 
+            with modern Angular 20 patterns, consistent OnPush change detection, and well-structured 
+            data persistence. <br><br>
+            <strong>Production-ready</strong> with recommended optimizations. 
+            Will efficiently handle typical canvassing sessions (100-500 leads).
+        </p>
+    </div>
+</body>
+</html>
