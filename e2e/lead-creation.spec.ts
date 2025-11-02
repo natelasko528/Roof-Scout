@@ -11,13 +11,19 @@ test.describe('Lead Creation Flow', () => {
   let page: RoofScoutPage;
 
   test.beforeEach(async ({ page: playwrightPage }) => {
+    page = new RoofScoutPage(playwrightPage);
+    
+    // Navigate to page first
+    await page.page.goto('/');
+    
+    // Wait for Angular to load
+    await page.page.waitForLoadState('networkidle');
+    
     // Clear storage before each test
     await clearStorage(playwrightPage);
 
     // Mock API responses to avoid real API calls
-    mockAPIResponses(playwrightPage);
-
-    page = new RoofScoutPage(playwrightPage);
+    await mockAPIResponses(playwrightPage);
   });
 
   test('should open add lead modal when clicking Add Lead button', async () => {

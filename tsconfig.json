@@ -32,11 +32,23 @@
     "paths": {
       "@/*": [
         "./*"
+      ],
+      "@core/*": [
+        "./src/app/core/*"
+      ],
+      "@shared/*": [
+        "./src/app/shared/*"
+      ],
+      "@features/*": [
+        "./src/app/features/*"
+      ],
+      "@app/*": [
+        "./src/app/*"
       ]
     }
   },
   "files": [
-    "./index.tsx"
+    "./src/main.ts"
   ],
   "angularCompilerOptions": {
     "disableTypeScriptVersionCheck": true

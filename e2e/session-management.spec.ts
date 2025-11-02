@@ -11,9 +11,17 @@ test.describe('Session Management', () => {
   let page: RoofScoutPage;
 
   test.beforeEach(async ({ page: playwrightPage }) => {
-    await clearStorage(playwrightPage);
-    mockAPIResponses(playwrightPage);
     page = new RoofScoutPage(playwrightPage);
+    
+    // Navigate to page first
+    await page.page.goto('/');
+    
+    // Wait for Angular to load
+    await page.page.waitForLoadState('networkidle');
+    
+    // Clear storage before each test
+    await clearStorage(playwrightPage);
+    await mockAPIResponses(playwrightPage);
   });
 
   test('should auto-create default session on startup', async () => {

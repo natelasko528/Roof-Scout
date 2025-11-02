@@ -9,10 +9,16 @@ import { Page, BrowserContext } from '@playwright/test';
  * Clear localStorage and sessionStorage before each test
  */
 export async function clearStorage(page: Page): Promise<void> {
-  await page.evaluate(() => {
-    localStorage.clear();
-    sessionStorage.clear();
-  });
+  // Only clear storage if page is loaded
+  try {
+    await page.evaluate(() => {
+      localStorage.clear();
+      sessionStorage.clear();
+    });
+  } catch (error) {
+    // Ignore errors if localStorage is not accessible yet
+    console.warn('Could not clear storage:', error);
+  }
 }
 
 /**
@@ -157,9 +163,9 @@ export async function checkLocalStorage(
 /**
  * Mock API responses for testing
  */
-export function mockAPIResponses(page: Page): void {
+export async function mockAPIResponses(page: Page): Promise<void> {
   // Mock geocoding API
-  page.route('**/nominatim/**', (route) => {
+  await page.route('**/nominatim/**', (route) => {
     route.fulfill({
       status: 200,
       body: JSON.stringify([
@@ -173,7 +179,7 @@ export function mockAPIResponses(page: Page): void {
   });
 
   // Mock satellite image API
-  page.route('**/arcgis/**', (route) => {
+  await page.route('**/arcgis/**', (route) => {
     route.fulfill({
       status: 200,
       body: TEST_IMAGES.small,
