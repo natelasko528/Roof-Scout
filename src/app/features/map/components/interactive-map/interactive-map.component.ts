@@ -9,10 +9,6 @@ import { firstValueFrom } from 'rxjs';
 // Leaflet types
 declare const L: any;
 
-// Import Leaflet plugins
-import 'leaflet-draw';
-import 'leaflet.heat';
-
 // Search result type
 interface SearchResult {
   display_name: string;
@@ -338,6 +334,11 @@ export class InteractiveMapComponent implements OnDestroy {
     this.map.on('click', (e: LeafletMouseEvent) => this.onMapClick(e));
     this.isMapInitialized = true;
     this.updateMarkers(this.leads());
+    
+    // Force map to recalculate size to ensure proper rendering
+    this.createTimeout(() => {
+      this.map.invalidateSize();
+    }, 300);
   }
   
   private setupBaseLayers() {
@@ -388,6 +389,14 @@ export class InteractiveMapComponent implements OnDestroy {
         onRemove: (map: any) => {}
     });
     new MyLocationControl({ position: 'topleft' }).addTo(this.map);
+    
+    // Add fullscreen control
+    L.control.fullscreen({
+      position: 'topright',
+      title: 'View Fullscreen',
+      titleCancel: 'Exit Fullscreen',
+      forceSeparateButton: true
+    }).addTo(this.map);
   }
 
   private setupGISFeatures() {
@@ -398,9 +407,7 @@ export class InteractiveMapComponent implements OnDestroy {
     // Add draw control for territory creation
     const drawControl = new L.Control.Draw({
       edit: {
-        featureGroup: this.drawnItems,
-        edit: true,
-        remove: true
+        featureGroup: this.drawnItems
       },
       draw: {
         polyline: false,
