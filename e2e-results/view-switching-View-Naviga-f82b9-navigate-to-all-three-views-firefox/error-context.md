@@ -1,0 +1,92 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e4]:
+  - banner [ref=e5]:
+    - heading "Roof Scout" [level=1] [ref=e6]
+    - button [ref=e8] [cursor=pointer]:
+      - img [ref=e9]
+  - main [ref=e11]:
+    - generic [ref=e13]:
+      - generic [ref=e14]:
+        - generic [ref=e15]:
+          - heading "Dashboard" [level=1] [ref=e16]
+          - button "Territory Report" [ref=e17] [cursor=pointer]:
+            - img [ref=e18]
+            - text: Territory Report
+        - generic [ref=e20]:
+          - generic [ref=e21]:
+            - paragraph [ref=e22]: Total Leads
+            - paragraph [ref=e23]: "0"
+          - generic [ref=e24]:
+            - paragraph [ref=e25]: Interested
+            - paragraph [ref=e26]: "0"
+          - generic [ref=e27]:
+            - paragraph [ref=e28]: Appointment
+            - paragraph [ref=e29]: "0"
+          - generic [ref=e30]:
+            - paragraph [ref=e31]: Not Home
+            - paragraph [ref=e32]: "0"
+        - generic [ref=e36]:
+          - generic [ref=e37]:
+            - img [ref=e38]
+            - text: "Storm Date:"
+          - textbox [ref=e40] [cursor=pointer]:
+            - /placeholder: Select storm date
+      - generic [ref=e44]:
+        - generic [ref=e45]:
+          - generic:
+            - generic:
+              - generic [ref=e46]:
+                - button "Zoom in" [ref=e47] [cursor=pointer]: +
+                - button "Zoom out" [ref=e48] [cursor=pointer]: −
+              - generic [ref=e49]:
+                - generic [ref=e51]:
+                  - link "Draw a polygon" [ref=e52] [cursor=pointer]:
+                    - /url: "#"
+                    - generic [ref=e53]: Draw a polygon
+                  - link "Draw a rectangle" [ref=e54] [cursor=pointer]:
+                    - /url: "#"
+                    - generic [ref=e55]: Draw a rectangle
+                - generic [ref=e57]:
+                  - link "Edit layers" [ref=e58]:
+                    - /url: "#"
+                    - generic [ref=e59]: Edit layers
+                  - link "Delete layers" [ref=e60]:
+                    - /url: "#"
+                    - generic [ref=e61]: Delete layers
+              - button "My Location" [ref=e62]:
+                - img [ref=e63]
+            - button "View Fullscreen" [ref=e66] [cursor=pointer]
+            - generic:
+              - button "Layers" [ref=e68] [cursor=pointer]
+              - link "Leaflet" [ref=e70] [cursor=pointer]:
+                - /url: https://leafletjs.com
+                - img [ref=e71]
+                - text: Leaflet
+        - textbox "Search for an address..." [ref=e77]
+        - generic [ref=e78]:
+          - button "Heatmap" [ref=e79] [cursor=pointer]:
+            - img [ref=e80]
+            - generic [ref=e83]: Heatmap
+          - button "Weather" [ref=e84] [cursor=pointer]:
+            - img [ref=e85]
+            - generic [ref=e87]: Weather
+          - generic [ref=e88]:
+            - generic [ref=e89]: Territories
+            - generic [ref=e90]: Use map controls to draw territories
+  - button [ref=e91] [cursor=pointer]:
+    - img [ref=e92]
+  - button [ref=e94] [cursor=pointer]:
+    - img [ref=e95]
+  - navigation [ref=e97]:
+    - button "Map" [active] [ref=e98] [cursor=pointer]:
+      - img [ref=e99]
+      - generic [ref=e102]: Map
+    - button "List" [ref=e103] [cursor=pointer]:
+      - img [ref=e104]
+      - generic [ref=e106]: List
+    - button "Sessions" [ref=e107] [cursor=pointer]:
+      - img [ref=e108]
+      - generic [ref=e110]: Sessions
+```

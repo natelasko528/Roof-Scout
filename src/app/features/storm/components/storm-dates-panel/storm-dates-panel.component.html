@@ -1,0 +1,125 @@
+@if (visible()) {
+<div
+  data-testid="storm-dates-panel"
+  class="fixed inset-0 z-[1050] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in-fast"
+  (click)="onClose()">
+
+  <div
+    class="bg-white dark:bg-slate-800 rounded-lg shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col animate-slide-up"
+    (click)="$event.stopPropagation()">
+    
+    <!-- Header -->
+    <div class="flex-shrink-0 flex items-center justify-between p-4 sm:p-6 border-b border-slate-200 dark:border-slate-700">
+      <div class="flex-1">
+        <h2 class="text-xl sm:text-2xl font-bold text-slate-900 dark:text-slate-100">Storm History</h2>
+        <p class="text-sm text-slate-600 dark:text-slate-400 mt-1">{{ address() }}</p>
+      </div>
+      <button
+        (click)="onClose()"
+        class="ml-4 p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-slate-500 dark:text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+
+    <!-- Content -->
+    <div class="flex-1 overflow-y-auto p-4 sm:p-6">
+      @if (isLoading()) {
+        <div class="flex flex-col items-center justify-center py-12">
+          <svg class="animate-spin h-12 w-12 text-sky-500 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          <p class="text-slate-600 dark:text-slate-400">Loading storm history...</p>
+        </div>
+      } @else if (error()) {
+        <div class="flex flex-col items-center justify-center py-12">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-red-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <p class="text-red-600 dark:text-red-400 text-center mb-4">{{ error() }}</p>
+          <button
+            (click)="loadStormData(address(), lat(), lng())"
+            class="px-4 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700 transition-colors">
+            Try Again
+          </button>
+        </div>
+      } @else if (stormEvents().length === 0) {
+        <div class="flex flex-col items-center justify-center py-12">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-slate-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" />
+          </svg>
+          <p class="text-slate-600 dark:text-slate-400 text-center">No storm events found for this location in the last 5 years.</p>
+        </div>
+      } @else {
+        <div class="space-y-3">
+          @for (event of stormEvents(); track event.date + event.type) {
+            <div data-testid="storm-event" class="border border-slate-200 dark:border-slate-700 rounded-lg p-4 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+              <div class="flex items-start gap-4">
+                <!-- Icon -->
+                <div class="flex-shrink-0 text-3xl">{{ getTypeIcon(event.type) }}</div>
+                
+                <!-- Content -->
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2 mb-2 flex-wrap">
+                    <h3 class="font-semibold text-slate-900 dark:text-slate-100">{{ formatDate(event.date) }}</h3>
+                    <span [class]="'px-2 py-1 rounded-full text-xs font-medium ' + getSeverityColor(event.severity)">
+                      {{ event.severity.charAt(0).toUpperCase() + event.severity.slice(1) }}
+                    </span>
+                  </div>
+                  
+                  <p class="text-sm text-slate-600 dark:text-slate-400 mb-2">{{ event.description }}</p>
+                  
+                  <!-- Details -->
+                  <div class="flex flex-wrap gap-4 text-xs text-slate-500 dark:text-slate-400">
+                    @if (event.hailSize) {
+                      <span class="flex items-center gap-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                        </svg>
+                        Hail: {{ event.hailSize }}" diameter
+                      </span>
+                    }
+                    @if (event.windSpeed) {
+                      <span class="flex items-center gap-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                        Wind: {{ event.windSpeed }} mph
+                      </span>
+                    }
+                    @if (event.precipitation) {
+                      <span class="flex items-center gap-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" />
+                        </svg>
+                        Precipitation: {{ event.precipitation.toFixed(2) }}"
+                      </span>
+                    }
+                  </div>
+                </div>
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    <!-- Footer -->
+    @if (!isLoading() && !error() && stormEvents().length > 0) {
+      <div class="flex-shrink-0 flex items-center justify-between p-4 sm:p-6 border-t border-slate-200 dark:border-slate-700">
+        <p class="text-sm text-slate-600 dark:text-slate-400">
+          {{ stormEvents().length }} storm event{{ stormEvents().length !== 1 ? 's' : '' }} found
+        </p>
+        <button
+          (click)="onCreateLead()"
+          class="px-4 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700 transition-colors font-medium">
+          Create Lead
+        </button>
+      </div>
+    }
+  </div>
+</div>
+}
+

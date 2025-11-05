@@ -4,6 +4,8 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { DataService } from '@core/services/data.service';
 import { MapActionService } from '@core/services/map-action.service';
 import { Lead, LeadStatus } from '@shared/models/lead.model';
+import { AffectedHome } from '@shared/models/storm.model';
+import { StormDatesPanelComponent } from '@features/storm/components/storm-dates-panel/storm-dates-panel.component';
 import { firstValueFrom } from 'rxjs';
 
 // Leaflet types
@@ -88,8 +90,9 @@ class RateLimiter {
 @Component({
   selector: 'app-interactive-map',
   templateUrl: './interactive-map.component.html',
+  styleUrls: ['./storm-markers.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule],
+  imports: [CommonModule, StormDatesPanelComponent],
 })
 export class InteractiveMapComponent implements OnDestroy {
   // Track active timeouts for cleanup
@@ -104,8 +107,10 @@ export class InteractiveMapComponent implements OnDestroy {
 
   mapContainer = viewChild.required<ElementRef>('mapContainer');
   leads = input.required<Lead[]>();
+  affectedHomes = input<AffectedHome[]>([]);
   markerClick = output<Lead>();
   newLeadAtAddress = output<string>();
+  affectedHomeClick = output<AffectedHome>();
 
   private http = inject(HttpClient);
   private dataService = inject(DataService);
@@ -113,6 +118,7 @@ export class InteractiveMapComponent implements OnDestroy {
 
   private map: any | null = null;
   private markers: any[] = [];
+  private stormMarkers: any[] = [];
   private currentUserMarker: any | null = null;
   private isMapInitialized = false;
   private searchDebounceTimer: NodeJS.Timeout | null = null;
@@ -135,6 +141,12 @@ export class InteractiveMapComponent implements OnDestroy {
   showWeatherOverlay = signal(false);
   isDrawingMode = signal(false);
 
+  // Storm dates panel state
+  selectedAddress = signal<string | null>(null);
+  selectedLat = signal<number | undefined>(undefined);
+  selectedLng = signal<number | undefined>(undefined);
+  showStormPanel = signal(false);
+
   constructor() {
     this.loadCache();
     
@@ -147,6 +159,14 @@ export class InteractiveMapComponent implements OnDestroy {
       const leads = this.leads();
       if (this.isMapInitialized) {
         untracked(() => this.updateMarkers(leads));
+      }
+    });
+
+    // Effect to handle affected homes changes
+    effect(() => {
+      const affectedHomes = this.affectedHomes();
+      if (this.isMapInitialized) {
+        untracked(() => this.updateStormMarkers(affectedHomes));
       }
     });
 
@@ -311,7 +331,7 @@ export class InteractiveMapComponent implements OnDestroy {
 
     this.setupBaseLayers();
     this.baseLayers['Street'].addTo(this.map);
-    this.layerControl = L.control.layers(this.baseLayers, {}, { position: 'topright' }).addTo(this.map);
+    this.layerControl = L.control.layers(this.baseLayers, {}, { position: 'bottomright' }).addTo(this.map);
     this.setupGISFeatures();
     this.addCustomControls();
 
@@ -390,9 +410,9 @@ export class InteractiveMapComponent implements OnDestroy {
     });
     new MyLocationControl({ position: 'topleft' }).addTo(this.map);
     
-    // Add fullscreen control
+    // Add fullscreen control at bottom-left to avoid conflicting with custom buttons
     L.control.fullscreen({
-      position: 'topright',
+      position: 'bottomleft',
       title: 'View Fullscreen',
       titleCancel: 'Exit Fullscreen',
       forceSeparateButton: true
@@ -416,7 +436,8 @@ export class InteractiveMapComponent implements OnDestroy {
         marker: false,
         circlemarker: false,
         polygon: true
-      }
+      },
+      position: 'topleft'
     });
     this.map.addControl(drawControl);
 
@@ -687,6 +708,58 @@ export class InteractiveMapComponent implements OnDestroy {
     this.markers.push(marker);
   }
 
+  private updateStormMarkers(affectedHomes: AffectedHome[]) {
+    if (!this.map) return;
+
+    // Clear existing storm markers
+    this.stormMarkers.forEach(marker => this.map.removeLayer(marker));
+    this.stormMarkers = [];
+
+    // Create new storm markers
+    affectedHomes.forEach(home => this.createStormMarker(home));
+  }
+
+  private createStormMarker(home: AffectedHome) {
+    if (!this.map || !home.lat || !home.lng) return;
+
+    const icon = L.divIcon({
+        html: this.getStormMarkerSVG(home.severity, home.stormType),
+        className: 'custom-storm-marker',
+        iconSize: [40, 40],
+        iconAnchor: [20, 40],
+        popupAnchor: [0, -40]
+    });
+
+    const marker = L.marker([home.lat, home.lng], { icon: icon }).addTo(this.map);
+
+    // Create popup content
+    const popupContent = `
+      <div class="storm-popup">
+        <strong>${home.address}</strong><br>
+        <div class="storm-details">
+          <span class="storm-type">${this.getStormTypeIcon(home.stormType)} ${home.stormType.toUpperCase()}</span>
+          <span class="storm-severity severity-${home.severity}">${home.severity.toUpperCase()}</span>
+        </div>
+        <div class="storm-date">📅 ${new Date(home.stormDate).toLocaleDateString()}</div>
+        ${home.hailSize ? `<div class="hail-size">❄️ Hail: ${home.hailSize}" diameter</div>` : ''}
+        ${home.windSpeed ? `<div class="wind-speed">💨 Wind: ${home.windSpeed} mph</div>` : ''}
+        <div class="storm-description">${home.details}</div>
+      </div>
+    `;
+
+    marker.bindPopup(popupContent, {
+      maxWidth: 300,
+      className: 'storm-popup-container'
+    });
+
+    marker.on('click', (e: LeafletMouseEvent) => {
+      L.DomEvent.stopPropagation(e);
+      this.affectedHomeClick.emit(home);
+    });
+
+    this.stormMarkers.push(marker);
+  }
+
   onSearchInput(event: Event) {
     const term = (event.target as HTMLInputElement).value;
     // Clear previous debounce timer
@@ -746,9 +819,31 @@ export class InteractiveMapComponent implements OnDestroy {
   }
 
   selectSearchResult(result: SearchResult) {
-    this.map.flyTo([parseFloat(result.lat), parseFloat(result.lon)], 18);
+    const lat = parseFloat(result.lat);
+    const lng = parseFloat(result.lon);
+    
+    this.map.flyTo([lat, lng], 18);
     this.searchResults.set([]);
     this.isSearchFocused.set(false);
+    
+    // Set selected address for storm panel
+    this.selectedAddress.set(result.display_name);
+    this.selectedLat.set(lat);
+    this.selectedLng.set(lng);
+    this.showStormPanel.set(true);
+  }
+
+  onCloseStormPanel() {
+    this.showStormPanel.set(false);
+    this.selectedAddress.set(null);
+    this.selectedLat.set(undefined);
+    this.selectedLng.set(undefined);
+  }
+
+  onCreateLeadFromStorm(data: { address: string; lat?: number; lng?: number }) {
+    this.onCloseStormPanel();
+    // Emit to parent to open new lead form
+    this.newLeadAtAddress.emit(data.address);
   }
   
   hideSearchResultsWithDelay() {
@@ -771,5 +866,43 @@ export class InteractiveMapComponent implements OnDestroy {
       'Callback': '#9333EA', 'Completed': '#059669',
     };
     return colors[status];
+  }
+
+  private getStormMarkerSVG(severity: AffectedHome['severity'], stormType: AffectedHome['stormType']): string {
+    const color = this.getSeverityColor(severity);
+    const icon = this.getStormTypeIcon(stormType);
+
+    return `
+      <div class="storm-marker-container">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" class="storm-marker-bg">
+          <circle cx="20" cy="20" r="18" fill="${color}" stroke="white" stroke-width="2" opacity="0.9"/>
+          <circle cx="20" cy="20" r="12" fill="white" opacity="0.3"/>
+        </svg>
+        <div class="storm-marker-icon">${icon}</div>
+        <div class="storm-marker-pulse"></div>
+      </div>
+    `;
+  }
+
+  private getSeverityColor(severity: AffectedHome['severity']): string {
+    const colors: Record<AffectedHome['severity'], string> = {
+      'mild': '#3B82F6',      // Blue
+      'moderate': '#F59E0B',  // Amber
+      'severe': '#EF4444',    // Red
+      'extreme': '#7C2D12',   // Dark red
+    };
+    return colors[severity];
+  }
+
+  private getStormTypeIcon(stormType: AffectedHome['stormType']): string {
+    const icons: Record<AffectedHome['stormType'], string> = {
+      'hail': '❄️',
+      'storm': '⛈️',
+      'wind': '💨',
+      'rain': '🌧️',
+      'snow': '❄️',
+      'other': '🌪️',
+    };
+    return icons[stormType] || icons.other;
   }
 }

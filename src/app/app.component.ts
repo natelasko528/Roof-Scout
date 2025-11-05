@@ -7,7 +7,7 @@ import { firstValueFrom } from 'rxjs';
 
 import { DataService } from './core/services/data.service';
 import { GeminiService } from './core/services/gemini.service';
-import { WeatherService } from './core/services/weather.service';
+import { WeatherService, WeatherEvent } from './core/services/weather.service';
 import { ThemeService } from './core/services/theme.service';
 import { ViewActionService } from './core/services/view-action.service';
 import { ReportService } from './core/services/report.service';
@@ -65,6 +65,10 @@ export class AppComponent implements OnInit, OnDestroy {
   // Loading states for better UX
   isGeocoding = signal<boolean>(false);
   isUploadingImages = signal<boolean>(false);
+
+  // Storm history for selected lead
+  leadStormEvents = signal<WeatherEvent[]>([]);
+  isLoadingStormHistory = signal<boolean>(false);
 
   // PWA Installation
   private deferredPrompt: any = null;
@@ -192,12 +196,14 @@ export class AppComponent implements OnInit, OnDestroy {
     this.modalType.set('lead-detail');
   }
 
-  openLeadDetails(lead: Lead) {
+  async openLeadDetails(lead: Lead) {
     this.isNewLead.set(false);
     this.selectedLead.set(lead);
     this.userImageUrls.set(lead.userImageUrls || []);
     this.leadForm.patchValue(lead);
     this.modalType.set('lead-detail');
+    // Load storm history for this lead
+    await this.loadStormHistoryForLead(lead);
   }
 
   closeModal() {
@@ -286,6 +292,54 @@ export class AppComponent implements OnInit, OnDestroy {
         severeWeatherCount: 0
       };
     }
+  }
+
+  async loadStormHistoryForLead(lead: Lead) {
+    this.isLoadingStormHistory.set(true);
+    try {
+      const events = await this.weatherService.getStormEvents(lead.address, lead.lat, lead.lng);
+      // Sort by date descending (most recent first)
+      const sortedEvents = events.sort((a, b) => 
+        new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
+      this.leadStormEvents.set(sortedEvents);
+    } catch (error) {
+      console.error('Failed to load storm history:', error);
+      this.leadStormEvents.set([]);
+    } finally {
+      this.isLoadingStormHistory.set(false);
+    }
+  }
+
+  getSeverityColor(severity: WeatherEvent['severity']): string {
+    const colors: Record<WeatherEvent['severity'], string> = {
+      'mild': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+      'moderate': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
+      'severe': 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
+      'extreme': 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+    };
+    return colors[severity] || colors.mild;
+  }
+
+  getTypeIcon(type: WeatherEvent['type']): string {
+    const icons: Record<WeatherEvent['type'], string> = {
+      'hail': '❄️',
+      'storm': '⛈️',
+      'wind': '💨',
+      'rain': '🌧️',
+      'snow': '❄️',
+      'other': '🌪️',
+    };
+    return icons[type] || icons.other;
+  }
+
+  formatDate(dateString: string): string {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
   }
 
   deleteLead() {

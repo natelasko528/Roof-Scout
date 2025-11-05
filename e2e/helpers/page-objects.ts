@@ -56,13 +56,26 @@ export class RoofScoutPage {
   readonly sendChatBtn: Locator;
   readonly chatMessages: Locator;
 
+  // Storm Functionality
+  readonly addressSearchInput: Locator;
+  readonly searchResults: Locator;
+  readonly stormDatesPanel: Locator;
+  readonly stormEvents: Locator;
+  readonly stormDateInput: Locator;
+  readonly clearDateBtn: Locator;
+  readonly affectedHomesTable: Locator;
+  readonly affectedHomeRows: Locator;
+  readonly stormTypeFilter: Locator;
+  readonly severityFilter: Locator;
+  readonly sortHeaders: Locator;
+
   constructor(page: Page) {
     this.page = page;
 
-    // Navigation
-    this.mapViewBtn = page.locator('[data-testid="map-view-btn"], button:has-text("Map")');
-    this.listViewBtn = page.locator('[data-testid="list-view-btn"], button:has-text("List")');
-    this.sessionsViewBtn = page.locator('[data-testid="sessions-view-btn"], button:has-text("Sessions")');
+    // Navigation - use exact text matching to avoid matching "Heatmap" when looking for "Map"
+    this.mapViewBtn = page.locator('[data-testid="map-view-btn"]').or(page.getByRole('button', { name: 'Map', exact: true }));
+    this.listViewBtn = page.locator('[data-testid="list-view-btn"]').or(page.getByRole('button', { name: 'List', exact: true }));
+    this.sessionsViewBtn = page.locator('[data-testid="sessions-view-btn"]').or(page.getByRole('button', { name: 'Sessions', exact: true }));
     this.chatbotBtn = page.locator('[data-testid="chatbot-btn"], button:has-text("Chat")');
 
     // Dashboard
@@ -107,6 +120,19 @@ export class RoofScoutPage {
     this.chatInput = page.locator('input[placeholder*="message" i], textarea[placeholder*="message" i]');
     this.sendChatBtn = page.locator('button:has-text("Send"), [data-testid="send-chat-btn"]');
     this.chatMessages = page.locator('[data-testid="chat-messages"], .chat-messages, .message-list');
+
+    // Storm Functionality
+    this.addressSearchInput = page.locator('input[placeholder*="Search for an address"], [data-testid="address-search"]');
+    this.searchResults = page.locator('[data-testid="search-result"], .search-result');
+    this.stormDatesPanel = page.locator('app-storm-dates-panel, [data-testid="storm-dates-panel"]');
+    this.stormEvents = page.locator('[data-testid="storm-event"], .storm-event');
+    this.stormDateInput = page.locator('input[type="date"], [data-testid="storm-date-input"]');
+    this.clearDateBtn = page.locator('button[title="Clear date"], [data-testid="clear-date-btn"]');
+    this.affectedHomesTable = page.locator('app-affected-homes-table, [data-testid="affected-homes-table"]');
+    this.affectedHomeRows = page.locator('[data-testid="affected-home-row"], .affected-home-row');
+    this.stormTypeFilter = page.locator('select[data-testid="storm-type-filter"], .storm-type-filter');
+    this.severityFilter = page.locator('select[data-testid="severity-filter"], .severity-filter');
+    this.sortHeaders = page.locator('th[data-sortable], th.sortable');
   }
 
   async navigateTo(view: 'map' | 'list' | 'sessions'): Promise<void> {
@@ -201,5 +227,61 @@ export class RoofScoutPage {
   async filterByStatus(status: string): Promise<void> {
     await this.statusFilter.selectOption(status);
     await this.page.waitForTimeout(500);
+  }
+
+  // Storm functionality methods
+  async searchAddress(address: string): Promise<void> {
+    await this.addressSearchInput.fill(address);
+    await this.page.waitForTimeout(1000); // Wait for search results
+  }
+
+  async selectFirstSearchResult(): Promise<void> {
+    await this.searchResults.first().click();
+    await this.page.waitForTimeout(500);
+  }
+
+  async selectStormDate(date: string): Promise<void> {
+    await this.stormDateInput.fill(date);
+    await this.page.waitForTimeout(2000); // Wait for affected homes to load
+  }
+
+  async clearStormDate(): Promise<void> {
+    if (await this.clearDateBtn.isVisible()) {
+      await this.clearDateBtn.click();
+    } else {
+      await this.stormDateInput.fill('');
+    }
+    await this.page.waitForTimeout(500);
+  }
+
+  async getStormEvents(): Promise<string[]> {
+    await this.stormEvents.first().waitFor({ state: 'visible', timeout: 15000 });
+    return await this.stormEvents.allTextContents();
+  }
+
+  async getAffectedHomes(): Promise<string[]> {
+    await this.affectedHomesTable.waitFor({ state: 'visible', timeout: 15000 });
+    return await this.affectedHomeRows.allTextContents();
+  }
+
+  async sortAffectedHomesBy(column: string): Promise<void> {
+    const header = this.page.locator(`th:has-text("${column}")`);
+    await header.click();
+    await this.page.waitForTimeout(500);
+  }
+
+  async filterAffectedHomesByStormType(stormType: string): Promise<void> {
+    if (await this.stormTypeFilter.isVisible()) {
+      await this.stormTypeFilter.selectOption(stormType);
+      await this.page.waitForTimeout(500);
+    }
+  }
+
+  async isStormDatesPanelVisible(): Promise<boolean> {
+    return await this.stormDatesPanel.isVisible();
+  }
+
+  async isAffectedHomesTableVisible(): Promise<boolean> {
+    return await this.affectedHomesTable.isVisible();
   }
 }

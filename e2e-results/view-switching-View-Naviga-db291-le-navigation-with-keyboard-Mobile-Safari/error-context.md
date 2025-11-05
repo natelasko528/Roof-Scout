@@ -1,0 +1,42 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e4]:
+  - banner [ref=e5]:
+    - heading "Roof Scout" [level=1] [ref=e6]
+    - button [ref=e8] [cursor=pointer]:
+      - img [ref=e9]
+  - main [ref=e11]:
+    - generic [ref=e13]:
+      - heading "Leads" [level=1] [ref=e14]
+      - generic [ref=e15]:
+        - textbox "Search by address or name..." [ref=e16]
+        - combobox [ref=e17]:
+          - option "All" [selected]
+          - option "Not Visited"
+          - option "Knocked"
+          - option "Interested"
+          - option "Not Interested"
+          - option "Not Home"
+          - option "Appointment"
+          - option "Callback"
+          - option "Completed"
+      - generic [ref=e19]:
+        - img [ref=e20]
+        - paragraph [ref=e22]: No leads found.
+        - paragraph [ref=e23]: Add a new lead to get started.
+  - button [ref=e24] [cursor=pointer]:
+    - img [ref=e25]
+  - button [ref=e27] [cursor=pointer]:
+    - img [ref=e28]
+  - navigation [ref=e30]:
+    - button "Map" [ref=e31] [cursor=pointer]:
+      - img [ref=e32]
+      - generic [ref=e35]: Map
+    - button "List" [active] [ref=e36] [cursor=pointer]:
+      - img [ref=e37]
+      - generic [ref=e39]: List
+    - button "Sessions" [ref=e40] [cursor=pointer]:
+      - img [ref=e41]
+      - generic [ref=e43]: Sessions
+```

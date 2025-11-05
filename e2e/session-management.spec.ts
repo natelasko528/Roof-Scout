@@ -21,6 +21,8 @@ test.describe('Session Management', () => {
     
     // Clear storage before each test
     await clearStorage(playwrightPage);
+    
+    // Note: Tests use real API calls - ensure API keys are configured in .env.local
     await mockAPIResponses(playwrightPage);
   });
 

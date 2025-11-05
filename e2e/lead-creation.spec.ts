@@ -22,7 +22,7 @@ test.describe('Lead Creation Flow', () => {
     // Clear storage before each test
     await clearStorage(playwrightPage);
 
-    // Mock API responses to avoid real API calls
+    // Note: Tests use real API calls - ensure API keys are configured in .env.local
     await mockAPIResponses(playwrightPage);
   });
 

@@ -1,0 +1,9 @@
+/* Component-specific styles if needed */
+input[type="date"] {
+  cursor: pointer;
+}
+
+input[type="date"]:disabled {
+  cursor: not-allowed;
+}
+

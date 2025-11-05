@@ -1,0 +1,15 @@
+/* Component-specific styles */
+table {
+  min-width: 800px;
+}
+
+@media (max-width: 768px) {
+  table {
+    font-size: 0.875rem;
+  }
+  
+  th, td {
+    padding: 0.5rem;
+  }
+}
+

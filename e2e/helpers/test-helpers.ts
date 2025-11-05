@@ -161,36 +161,10 @@ export async function checkLocalStorage(
 }
 
 /**
- * Mock API responses for testing
+ * No API mocking - all tests use real API calls
+ * This function is kept for backwards compatibility but does nothing
  */
 export async function mockAPIResponses(page: Page): Promise<void> {
-  // Mock geocoding API
-  await page.route('**/nominatim/**', (route) => {
-    route.fulfill({
-      status: 200,
-      body: JSON.stringify([
-        {
-          lat: '40.7128',
-          lon: '-74.0060',
-          display_name: '123 Main Street, Anytown, NY 10001',
-        },
-      ]),
-    });
-  });
-
-  // Mock satellite image API
-  await page.route('**/arcgis/**', (route) => {
-    route.fulfill({
-      status: 200,
-      body: TEST_IMAGES.small,
-      headers: { 'Content-Type': 'image/png' },
-    });
-  });
+  // No mocking - all API calls will go through to real endpoints
+  // Ensure API keys are configured in .env.local for testing
 }
-
-/**
- * Export test images for reuse
- */
-const TEST_IMAGES = {
-  small: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
-};

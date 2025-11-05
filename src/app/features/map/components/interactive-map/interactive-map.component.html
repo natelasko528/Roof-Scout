@@ -63,4 +63,15 @@
       <div class="text-xs text-slate-500 dark:text-slate-400">Use map controls to draw territories</div>
     </div>
   </div>
+
+  <!-- Storm Dates Panel -->
+  @if (selectedAddress() && showStormPanel()) {
+    <app-storm-dates-panel
+      [address]="selectedAddress()!"
+      [lat]="selectedLat()"
+      [lng]="selectedLng()"
+      [visible]="showStormPanel()"
+      (close)="onCloseStormPanel()"
+      (createLead)="onCreateLeadFromStorm($event)" />
+  }
 </div>
